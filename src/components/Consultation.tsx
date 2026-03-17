@@ -4,7 +4,7 @@
  */
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, ArrowLeft, MoreVertical, Bot, ShieldPlus, ClipboardPlus } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, PhoneOff, ArrowLeft, MoreVertical, Bot, ShieldPlus, ClipboardPlus, SwitchCamera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../context/AppContext';
 import { useWebSocketAgent } from '../hooks/useWebSocketAgent';
@@ -69,7 +69,7 @@ export const Consultation = () => {
     });
   }, [addLog, setHealthPlan]);
 
-  const { aiStatus, aiText, isMuted, isVideoOff, volume, toggleMute, toggleVideo } = useWebSocketAgent({
+  const { aiStatus, aiText, isMuted, isVideoOff, volume, toggleMute, toggleVideo, switchCamera } = useWebSocketAgent({
     mealLogs,
     videoRef,
     onToolCall,
@@ -203,9 +203,11 @@ export const Consultation = () => {
           </div>
         </div>
 
-        <button className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white">
-          <MoreVertical className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={switchCamera} className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white transition-colors hover:bg-black/60">
+            <SwitchCamera className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Floating AI Widget */}

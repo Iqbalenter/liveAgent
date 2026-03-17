@@ -98,6 +98,7 @@ interface UseWebSocketAgentResult {
   volume: number;
   toggleMute: () => void;
   toggleVideo: () => void;
+  switchCamera: () => void;
 }
 
 // ─── Hook ────────────────────────────────────────────────────────────────────
@@ -112,6 +113,7 @@ export function useWebSocketAgent({
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [volume, setVolume] = useState<number>(0);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
 
   const wsRef = useRef<WebSocket | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -123,6 +125,9 @@ export function useWebSocketAgent({
   const isMutedRef = useRef(false);
   const isVideoOffRef = useRef(false);
   const onToolCallRef = useRef(onToolCall);
+  const facingModeRef = useRef<{ mode: "user" | "environment" }>({
+    mode: facingMode,
+  });
 
   useEffect(() => {
     isMutedRef.current = isMuted;
@@ -133,6 +138,9 @@ export function useWebSocketAgent({
   useEffect(() => {
     onToolCallRef.current = onToolCall;
   }, [onToolCall]);
+  useEffect(() => {
+    facingModeRef.current.mode = facingMode;
+  }, [facingMode]);
 
   // ── Setup effect — dijalankan sekali saat mount ───────────────────────────
   useEffect(() => {
@@ -150,7 +158,7 @@ export function useWebSocketAgent({
 
         // 2. Minta akses kamera + mikrofon
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" },
+          video: { facingMode: facingModeRef.current.mode },
           audio: {
             channelCount: 1,
             sampleRate: 16000,
@@ -411,7 +419,7 @@ export function useWebSocketAgent({
       // Turn video back on by requesting a new video track
       try {
         const videoStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "user" },
+          video: { facingMode: facingModeRef.current.mode },
         });
         const newVideoTrack = videoStream.getVideoTracks()[0];
 
@@ -436,6 +444,41 @@ export function useWebSocketAgent({
     }
   };
 
+  const switchCamera = async () => {
+    try {
+      const newMode =
+        facingModeRef.current.mode === "user" ? "environment" : "user";
+      setFacingMode(newMode);
+      facingModeRef.current.mode = newMode; // Update ref immediately for async tasks
+
+      // If video is not off, switch the active track
+      if (!isVideoOffRef.current) {
+        const videoStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: newMode },
+        });
+        const newVideoTrack = videoStream.getVideoTracks()[0];
+
+        if (streamRef.current) {
+          // Stop and remove existing video tracks
+          streamRef.current.getVideoTracks().forEach((t) => {
+            t.stop();
+            streamRef.current?.removeTrack(t);
+          });
+
+          // Add newly acquired video track
+          streamRef.current.addTrack(newVideoTrack);
+        }
+
+        // Re-assign to fix display if needed
+        if (videoRef.current) {
+          videoRef.current.srcObject = streamRef.current;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to switch camera:", err);
+    }
+  };
+
   return {
     aiStatus,
     aiText,
@@ -444,5 +487,6 @@ export function useWebSocketAgent({
     volume,
     toggleMute,
     toggleVideo,
+    switchCamera,
   };
 }

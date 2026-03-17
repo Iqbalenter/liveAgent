@@ -14,31 +14,39 @@ export const Scanner = () => {
   const [detectedItems, setDetectedItems] = useState<MealItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
-
-  const startCamera = async () => {
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-        audio: false,
-      });
-      setStream(mediaStream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
-    } catch (err) {
-      console.error("Error accessing camera:", err);
-      setError("Could not access camera. Please check permissions.");
-    }
-  };
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('environment');
 
   useEffect(() => {
-    startCamera();
-    return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+    const startCamera = async () => {
+      try {
+        if (videoRef.current && videoRef.current.srcObject) {
+          const oldStream = videoRef.current.srcObject as MediaStream;
+          oldStream.getTracks().forEach(track => track.stop());
+        }
+
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode },
+          audio: false,
+        });
+        setStream(mediaStream);
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream;
+        }
+      } catch (err) {
+        console.error("Error accessing camera:", err);
+        setError("Could not access camera. Please check permissions.");
       }
     };
-  }, []);
+
+    startCamera();
+
+    return () => {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const currentStream = videoRef.current.srcObject as MediaStream;
+        currentStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [facingMode]);
 
   const captureImage = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return null;
@@ -234,7 +242,10 @@ export const Scanner = () => {
           <div className="w-16 h-16 rounded-full bg-white"></div>
         </button>
 
-        <button className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/20">
+        <button
+          onClick={() => setFacingMode(prev => prev === 'environment' ? 'user' : 'environment')}
+          className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white border border-white/20"
+        >
           <RotateCcw className="w-6 h-6" />
         </button>
       </motion.div>
