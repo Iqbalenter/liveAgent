@@ -454,7 +454,7 @@ export function useWebSocketAgent({
       // If video is not off, switch the active track
       if (!isVideoOffRef.current) {
         const videoStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: newMode },
+          video: { facingMode: { exact: newMode } },
         });
         const newVideoTrack = videoStream.getVideoTracks()[0];
 
@@ -471,11 +471,35 @@ export function useWebSocketAgent({
 
         // Re-assign to fix display if needed
         if (videoRef.current) {
+          videoRef.current.srcObject = null;
           videoRef.current.srcObject = streamRef.current;
         }
       }
     } catch (err) {
       console.error("Failed to switch camera:", err);
+      // Fallback if 'exact' constraint fails
+      try {
+        const fallbackMode = facingModeRef.current.mode;
+        const videoStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: fallbackMode },
+        });
+        const newVideoTrack = videoStream.getVideoTracks()[0];
+
+        if (streamRef.current) {
+          streamRef.current.getVideoTracks().forEach((t) => {
+            t.stop();
+            streamRef.current?.removeTrack(t);
+          });
+          streamRef.current.addTrack(newVideoTrack);
+        }
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = null;
+          videoRef.current.srcObject = streamRef.current;
+        }
+      } catch (fallbackErr) {
+        console.error("Fallback camera switch failed", fallbackErr);
+      }
     }
   };
 

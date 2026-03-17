@@ -25,11 +25,12 @@ export const Scanner = () => {
         }
 
         const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode },
+          video: { facingMode: { ideal: facingMode } },
           audio: false,
         });
         setStream(mediaStream);
         if (videoRef.current) {
+          videoRef.current.srcObject = null;
           videoRef.current.srcObject = mediaStream;
         }
       } catch (err) {
